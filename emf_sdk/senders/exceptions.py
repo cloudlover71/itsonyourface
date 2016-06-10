@@ -1,0 +1,2 @@
+class EMFSenderException(Exception):
+    pass
