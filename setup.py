@@ -10,7 +10,7 @@ setup(
   version='0.1.1',
   description='Expedia EMF SDK',
   package_dir={'emf_sdk': 'emf_sdk'},
-  packages=['emf_sdk', 'emf_sdk/senders'],
+  packages=['emf_sdk', 'emf_sdk/senders', 'emf_sdk/messages'],
   install_requires=['fluent-logger'],
   author='Trofim Prodayvoda',
   author_email='t.prodayvoda@gmail.com',

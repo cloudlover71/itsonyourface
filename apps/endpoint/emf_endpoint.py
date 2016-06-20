@@ -17,7 +17,8 @@ parser.add_argument('--log-file', type=str, required=False, default='emf_endpoin
 @asyncio.coroutine
 def web_connection_handler(_, writer):
     logger.debug('Connection established %s', writer.get_extra_info('peername'))
-    yield from writer.write('OK'.encode())
+    writer.write('HTTP/1.1 200 OK\r\n'.encode())
+    yield from writer.drain()
     writer.close()
     logger.debug('Connection closed %s', writer.get_extra_info('peername'))
 

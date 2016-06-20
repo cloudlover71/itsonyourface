@@ -4,7 +4,7 @@ import socket
 import argparse
 from urllib.parse import urlsplit
 
-from emf_sdk import get_logger, sender_factory, SENDER_TYPE, REQUEST_TYPE
+from emf_sdk import get_logger, sender_factory, message_factory, SENDER_TYPE, REQUEST_TYPE, MESSAGE_TYPE
 
 
 parser = argparse.ArgumentParser(description='EMF SDK Latency Monitor')
@@ -15,6 +15,12 @@ parser.add_argument('--port', type=int, required=False, default=80, help='Target
 parser.add_argument('--interval', type=int, required=True, help='Time interval in sec between requests')
 parser.add_argument('--timeout', type=int, required=True,
                     help='Request timeout in sec. Notice that target host have its own timeout')
+
+parser.add_argument('--fluentd-tag', type=str, required=False, default='emf.debug')
+parser.add_argument('--fluentd-label', type=str, required=False, default='test')
+parser.add_argument('--fluentd-host', type=str, required=False, default='localhost')
+parser.add_argument('--fluentd-port', type=int, required=False, default=24224)
+
 parser.add_argument('--debug', type=int, required=False, default=0, choices=[0, 1],
                     help='Set logging level to DEBUG and redirect output to STDOUT')
 parser.add_argument('--log-file', type=str, required=False, default='latency_monitor.log')
@@ -29,8 +35,11 @@ def render_request_headers(hostname, path):
 
 
 def get_response_code(data):
-    header, _ = data.decode().split('\r\n', 1)
-    return int(header.split()[1])
+    try:
+        header, _ = data.decode().split('\r\n', 1)
+        return int(header.split()[1])
+    except:
+        return 0
 
 
 if __name__ == '__main__':
@@ -51,26 +60,40 @@ if __name__ == '__main__':
         logger.error('Exception: %s', e)
         exit()
 
+    message_cls = message_factory(MESSAGE_TYPE.LATENCY)
+    sender = sender_factory(SENDER_TYPE.FLUENT, {
+        'tag': app_args.fluentd_tag,
+        'host': app_args.fluentd_host,
+        'port': app_args.fluentd_port,
+    })
+
+    # Infinity loop. Stops by user or critical error
     while True:
+        message = message_cls(host, app_args.timeout)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        sock.setblocking(True)
+        sock.settimeout(app_args.timeout)
+
+        if app_args.request_mode == REQUEST_TYPE.HTTPS:
+            sock = ssl.wrap_socket(sock, cert_reqs=ssl.CERT_NONE)
+
+        # Connect to endpoint and calculate latency
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            sock.setblocking(True)
-            sock.settimeout(app_args.timeout)
-
-            if app_args.request_mode == REQUEST_TYPE.HTTPS:
-                sock = ssl.wrap_socket(sock, cert_reqs=ssl.CERT_NONE)
-
+            message.start()
             sock.connect((host, port))
             logger.debug('Connected to: %s:%s', host, port)
 
+            # Check if connection was successful
             if app_args.request_mode in [REQUEST_TYPE.HTTP, REQUEST_TYPE.HTTPS]:
                 sock.sendall(request_headers.encode())
-
                 response_code = get_response_code(sock.recv(128))
-                logger.debug('Response code: %s', str(response_code))
+                logger.debug('Response code: %s', response_code)
 
-            #print("Ping: ", "OK" if data[1] == '200' else "-1")
-
+                if response_code == 200:
+                    message.stop()
+            else:
+                message.stop()
         except socket.timeout:
             logger.info('Timeout reached')
         except ConnectionError as e:
@@ -85,6 +108,14 @@ if __name__ == '__main__':
             logger.debug('Socket closed')
             sock.close()
 
+        # Send message via sender
+        try:
+            sender.send(app_args.fluentd_label, message.as_dict())
+        except Exception as e:
+            logger.critical('Exception: %s', e)
+            break
+
+        # Wait for next iteration
         try:
             time.sleep(app_args.interval)
         except KeyboardInterrupt:
