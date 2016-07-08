@@ -31,6 +31,11 @@
     pip install -r requirements.txt
 ```
 
+## Senders configuration:
+```
+    apps/latency_monitor/config.ini
+```
+
 ## Applications running:
 ```
     Use "python application_script.py -h" for help. Example:
@@ -43,6 +48,12 @@
 ```
 
 ### Latency monitor example:
+Event Hub mode:
 ```
-    python apps/latency_monitor/emf_latency_monitor.py --host 127.0.0.1 --port 8004 --request_mode https --interval 3 --timeout 1 --debug 1
+   python apps/endpoint/emf_latency_monitor.py --request-mode=https --host=localhost --port=8004 --timeout=2 --interval=3 --sender-mode=event_hub --sender-label=emf-test-eh --debug=1
+```
+
+FluentD mode:
+```
+   python apps/endpoint/emf_latency_monitor.py --request-mode=https --host=localhost --port=8004 --timeout=2 --interval=3 --sender-mode=fluentd --sender-label=test --debug=1
 ```
