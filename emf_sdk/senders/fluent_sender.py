@@ -8,10 +8,8 @@ class FluentConfig(object):
     tag = None
     host = None
     port = None
-    label = None
 
     def __init__(self, params):
-        assert isinstance(params, dict), 'params must be a dict'
         self.tag = params['tag']
         self.host = params['host']
         self.port = params['port']

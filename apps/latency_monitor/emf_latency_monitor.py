@@ -2,13 +2,14 @@ import ssl
 import time
 import socket
 import argparse
+import configparser
 from urllib.parse import urlsplit
 
 from emf_sdk import get_logger, sender_factory, message_factory, SENDER_TYPE, REQUEST_TYPE, MESSAGE_TYPE
 
 
 parser = argparse.ArgumentParser(description='EMF SDK Latency Monitor')
-parser.add_argument('--request_mode', type=str, required=True, choices=REQUEST_TYPE.get_list())
+parser.add_argument('--request-mode', type=str, required=True, choices=REQUEST_TYPE.get_list())
 parser.add_argument('--host', type=str, required=True,
                     help='Target host. IP adress for TCP mode, URI without protocol and port for other modes')
 parser.add_argument('--port', type=int, required=False, default=80, help='Target port')
@@ -16,10 +17,9 @@ parser.add_argument('--interval', type=int, required=True, help='Time interval i
 parser.add_argument('--timeout', type=int, required=True,
                     help='Request timeout in sec. Notice that target host have its own timeout')
 
-parser.add_argument('--fluentd-tag', type=str, required=False, default='emf.debug')
-parser.add_argument('--fluentd-label', type=str, required=False, default='test')
-parser.add_argument('--fluentd-host', type=str, required=False, default='localhost')
-parser.add_argument('--fluentd-port', type=int, required=False, default=24224)
+parser.add_argument('--sender-mode', type=str, required=True, choices=SENDER_TYPE.get_list())
+parser.add_argument('--sender-label', type=str, required=True, help='Have diferent meaning depends on sender mode. '
+                                                                    'For fluentd mode - label for multiple sources.')
 
 parser.add_argument('--debug', type=int, required=False, default=0, choices=[0, 1],
                     help='Set logging level to DEBUG and redirect output to STDOUT')
@@ -47,6 +47,9 @@ if __name__ == '__main__':
 
     logger = get_logger('LatencyMonitorLogger', app_args.debug, app_args.log_file)
 
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
     try:
         if app_args.request_mode in [REQUEST_TYPE.HTTP, REQUEST_TYPE.HTTPS]:
             url = urlsplit('//' + app_args.host)
@@ -61,11 +64,7 @@ if __name__ == '__main__':
         exit()
 
     message_cls = message_factory(MESSAGE_TYPE.LATENCY)
-    sender = sender_factory(SENDER_TYPE.FLUENT, {
-        'tag': app_args.fluentd_tag,
-        'host': app_args.fluentd_host,
-        'port': app_args.fluentd_port,
-    })
+    sender = sender_factory(app_args.sender_mode, config[app_args.sender_mode])
 
     # Infinity loop. Stops by user or critical error
     while True:
@@ -110,7 +109,8 @@ if __name__ == '__main__':
 
         # Send message via sender
         try:
-            sender.send(app_args.fluentd_label, message.as_dict())
+            sender.send(app_args.sender_label, message.as_dict())
+            logger.debug('Message %s sent to %s' % (message.as_dict(), app_args.sender_mode))
         except Exception as e:
             logger.critical('Exception: %s', e)
             break
