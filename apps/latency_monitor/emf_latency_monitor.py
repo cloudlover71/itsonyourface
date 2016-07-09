@@ -5,7 +5,8 @@ import argparse
 import configparser
 from urllib.parse import urlsplit
 
-from emf_sdk import get_logger, sender_factory, message_factory, SENDER_TYPE, REQUEST_TYPE, MESSAGE_TYPE
+from emf_sdk import get_logger, sender_factory, message_factory, SENDER_TYPE, REQUEST_TYPE, MESSAGE_TYPE, \
+    METRIC_THRESHOLD_OPERATOR, METRIC_CALCULATION
 
 
 parser = argparse.ArgumentParser(description='EMF SDK Latency Monitor')
@@ -20,6 +21,15 @@ parser.add_argument('--timeout', type=int, required=True,
 parser.add_argument('--sender-mode', type=str, required=True, choices=SENDER_TYPE.get_list())
 parser.add_argument('--sender-label', type=str, required=True, help='Have diferent meaning depends on sender mode. '
                                                                     'For fluentd mode - label for multiple sources.')
+
+parser.add_argument('--metric-threshold-operator', type=str, required=False,
+                    default=METRIC_THRESHOLD_OPERATOR.GREATER_THAN, choices=METRIC_THRESHOLD_OPERATOR.get_list())
+parser.add_argument('--metric-calculation', type=str, required=False,
+                    default=METRIC_CALCULATION.AVERAGE, choices=METRIC_CALCULATION.get_list())
+
+parser.add_argument('--source', type=str, required=False, default='EMFSDK', help='Default value EMFSDK')
+parser.add_argument('--source-instance', type=str, required=False, default='BookingAPIMonitorInstance1',
+                    help='Default value BookingAPIMonitorInstance1')
 
 parser.add_argument('--debug', type=int, required=False, default=0, choices=[0, 1],
                     help='Set logging level to DEBUG and redirect output to STDOUT')
@@ -68,7 +78,7 @@ if __name__ == '__main__':
 
     # Infinity loop. Stops by user or critical error
     while True:
-        message = message_cls(host, app_args.timeout)
+        message = message_cls(host, app_args)
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         sock.setblocking(True)

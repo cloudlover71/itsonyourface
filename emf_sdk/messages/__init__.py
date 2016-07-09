@@ -1,32 +1,46 @@
 import time
 import datetime
 
+from ..helpers import ConstantsMixing
 
 __all__ = (
     "MESSAGE_TYPE",
+    "METRIC_THRESHOLD_OPERATOR",
+    "METRIC_CALCULATION",
     "message_factory"
 )
 
-class MESSAGE_TYPE(object):
+
+class MESSAGE_TYPE(ConstantsMixing):
     LATENCY = 'latency'
 
-    @staticmethod
-    def get_list():
-        return [MESSAGE_TYPE.LATENCY]
+
+class METRIC_THRESHOLD_OPERATOR(ConstantsMixing):
+    GREATER_THAN = 'GreaterThan'
+    GREATER_THAN_OR_EQUAL_TO = 'GreaterThanOrEqualTo'
+    LESS_THAN = 'LessThan'
+    LESS_THAN_OR_EQUAL_TO = 'LessThanOrEqualTo'
+
+
+class METRIC_CALCULATION(ConstantsMixing):
+    AVERAGE = 'Average'
+    MAXIMUM = 'Maximum'
+    MINIMUM = 'Minimum'
+    SUM = 'Sum'
 
 
 class LatencyMessage(object):
-    def __init__(self, hostname, timeout):
+    def __init__(self, hostname, args):
         self.Hostname = hostname
         self.TimeMeasured = str(datetime.datetime.now())
         self.MetricName = 'Network Latency'
         self.MetricData = -1
         self.MetricUnits = 'ms'
-        self.MetricThreshold = timeout
-        self.MetricThresholdOperator = 'GreaterThan'  # GreaterThan, GreaterThanOrEqualTo, LessThan, LessThanOrEqualTo
-        self.MetricCalculation = 'Average'  # Average, Maximum, Minimum, Sum
-        self.Source = 'EMFSDK'
-        self.SourceInstance = 'BookingAPIMonitorInstance1'
+        self.MetricThreshold = args.timeout
+        self.MetricThresholdOperator = args.metric_threshold_operator
+        self.MetricCalculation = args.metric_calculation
+        self.Source = args.source
+        self.SourceInstance = args.source_instance
         self._start_time = None
         self._end_time = None
 

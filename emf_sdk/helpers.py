@@ -11,3 +11,9 @@ def get_logger(logger_name, is_debug, log_file):
         logging.basicConfig(filename=log_file, level=logging.INFO, format=log_format)
         logging.getLogger('asyncio').setLevel(logging.WARNING)  # Suppress Asyncio info logs
     return custom_logger
+
+
+class ConstantsMixing(object):
+    @classmethod
+    def get_list(cls):
+        return [getattr(cls, attr) for attr in dir(cls()) if not attr.startswith("__") and attr != 'get_list']
