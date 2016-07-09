@@ -18,7 +18,7 @@ class FluentConfig(object):
 class FluentSender(BaseSender):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._sender = NativeFluentSender(self._config.tag, self._config.host, self._config.port)
+        self._sender = NativeFluentSender(self._config.tag, self._config.host, int(self._config.port))
 
     def send(self, label, data):
         assert isinstance(label, str), 'label must be a string'
